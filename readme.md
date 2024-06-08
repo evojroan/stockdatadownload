@@ -21,8 +21,8 @@
      ```
 
 2. 執行程式
-   - 直接執行 `app.js`，或是執行已打包好的 `dailydownloader.exe`
-   - 程式將會自動建立所需的資料夾並下載資料
+   - 直接執行 `app.js`，程式將會自動建立所需的資料夾並下載資料
+   - 或也可自行打包
 
 ## 本程式使用工具
 
@@ -31,7 +31,7 @@
 
 ## 尚待優化的地方
 
-連結到每個網頁時，目前使用 page.waitForTimeout() 的方式等待網頁讀取完才繼續下一步動作。考量使用者的網路連線品質不一，超過等待的時間頁面可能尚未讀取完畢，導致程式無法順路執行。
+- 連結到每個網頁時，目前使用 page.waitForTimeout() 的方式等待網頁讀取完才繼續下一步動作。考量使用者的網路連線品質不一，超過等待的時間頁面可能尚未讀取完畢，導致程式無法順路執行。
 
 ## 本程式作者
 
@@ -44,7 +44,7 @@ Roan，專長是碎碎念。
 
 ## What is this?
 
-Built with Playwright, this program automatically downloads daily Taiwan stock data, including:
+Built with Playwright, this code automatically downloads daily Taiwan stock data, including:
 
 - Daily closing prices for listed stocks
 - Daily closing prices for OTC stocks
@@ -52,7 +52,7 @@ Built with Playwright, this program automatically downloads daily Taiwan stock d
 - Daily buy/sell surplus for OTC stocks
 - On weekends, it also downloads the major shareholders' holdings for the week
 
-## How to use?
+## How to use it?
 
 1. Install Node.js and Playwright
 
@@ -62,20 +62,19 @@ Built with Playwright, this program automatically downloads daily Taiwan stock d
      npm install playwright
      ```
 
-2. Run the program
-   - Directly run `app.js`, or execute the packaged `dailydownloader.exe`
-   - The program will automatically create the necessary folders and download the data
+2. Run the code
+   - Directly run `app.js`, and it will automatically create the necessary folders and download the data.
 
-## Tools used in this program
+## Tools used
 
 - Node.js
 - Playwright
 
-## Areas for improvement
+## To be improved
 
-Currently, the program uses `page.waitForTimeout()` to wait for the web page to load before proceeding to the next step. Due to varying internet connection qualities among users, there might be instances where the page has not fully loaded after the wait time, causing the program to not run smoothly. A more robust waiting mechanism in future improvements is considered.
+- The code uses `page.waitForTimeout()` to wait for the web page to load before proceeding to the next step. Due to varying internet connection qualities among users, there might be instances where the page has not fully loaded after the wait time, causing the code to not run smoothly. A more robust waiting mechanism in future improvements is considered.
 
-## Author of this program
+## The author
 
 Roan
 
