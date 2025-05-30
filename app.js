@@ -1,5 +1,6 @@
 const {chromium} = require("@playwright/test");
 const fs = require("fs/promises"); // 使用 promises 版本
+const cron = require("node-cron");
 
 // 自定義日期格式化函數
 function formatDate(date) {
@@ -23,10 +24,11 @@ if (dayOfWeek === 6) {
 
 todayDate = formatDate(today);
 
-//自動下載檔案
-(async () => {
+//每週一到五自動下載檔案
+cron.schedule("30 18 * * 1-5", async () => {
   const browser = await chromium.launch({headless: false});
   const page = await browser.newPage();
+  console.log("Cron 開始執行股票資料下載...");
 
   // 每日上市收盤價
   await page.goto(
@@ -50,7 +52,7 @@ todayDate = formatDate(today);
   await page.waitForTimeout(2500);
 
   downloadPromise = page.waitForEvent("download");
-  await page.click("button.btn-download");
+  await page.click('button.response[data-format="csv"]');
 
   try {
     download = await downloadPromise;
@@ -76,10 +78,10 @@ todayDate = formatDate(today);
     "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge.php?l=zh-tw"
   );
   await page.waitForTimeout(2500);
-  await page.selectOption("#sect", "EW");
+  await page.selectOption("#___auto1", "EW");
   await page.waitForTimeout(2000);
   downloadPromise = page.waitForEvent("download");
-  await page.click("button.btn-download");
+  await page.click('button.response[data-format="csv"]');
 
   try {
     download = await downloadPromise;
@@ -87,6 +89,16 @@ todayDate = formatDate(today);
   } catch (error) {
     console.error("下載上櫃買賣超時出錯:", error);
   }
+
+  await browser.close();
+  console.log("股票資料下載完成！");
+});
+
+//每週六自動下載大戶資料
+cron.schedule("15 10 * * 6", async () => {
+  const browser = await chromium.launch({headless: false});
+  const page = await browser.newPage();
+  console.log("Cron 開始執行股票資料下載...");
 
   //週六日下載集保戶股權分散表
   if (dayOfWeek === 6 || dayOfWeek === 0) {
@@ -101,4 +113,5 @@ todayDate = formatDate(today);
   }
 
   await browser.close();
-})();
+  console.log("集保戶股權分散表下載完成！");
+});
