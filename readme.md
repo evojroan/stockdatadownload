@@ -29,9 +29,10 @@
 - Node.js
 - Playwright
 
-## 尚待優化的地方
+## 待完成
 
-- 連結到每個網頁時，目前使用 page.waitForTimeout() 的方式等待網頁讀取完才繼續下一步動作。考量使用者的網路連線品質不一，超過等待的時間頁面可能尚未讀取完畢，導致程式無法順路執行。
+[ ]GitHub Actions
+[ ]GoogleDriveAPI
 
 ## 本程式作者
 
