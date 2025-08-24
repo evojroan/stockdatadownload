@@ -17,13 +17,44 @@ class GoogleDriveUploader {
 
       const auth = new google.auth.GoogleAuth({
         credentials,
-        scopes: ["https://www.googleapis.com/auth/drive.file"]
+        scopes: ["https://www.googleapis.com/auth/drive"]
       });
 
       this.drive = google.drive({version: "v3", auth});
       console.log("Google Drive API 初始化成功");
+
+      // 驗證父資料夾權限
+      await this.verifyParentFolder();
     } catch (error) {
       console.error("Google Drive API 初始化失敗:", error);
+      throw error;
+    }
+  }
+
+  // 驗證父資料夾權限
+  async verifyParentFolder() {
+    try {
+      console.log(`檢查父資料夾權限 (ID: ${this.folderId})`);
+
+      const response = await this.drive.files.get({
+        fileId: this.folderId,
+        fields: "id, name, permissions, capabilities"
+      });
+
+      console.log(`父資料夾名稱: ${response.data.name}`);
+      console.log(`父資料夾權限:`, response.data.capabilities);
+
+      if (!response.data.capabilities?.canAddChildren) {
+        throw new Error("服務帳戶沒有在此資料夾創建子資料夾的權限");
+      }
+
+      console.log("✓ 父資料夾權限驗證通過");
+    } catch (error) {
+      console.error("父資料夾權限驗證失敗:", error);
+      console.log("請確認:");
+      console.log("1. GOOGLE_DRIVE_FOLDER_ID 設定正確");
+      console.log("2. 服務帳戶已被加入資料夾共用清單");
+      console.log("3. 服務帳戶權限設為「編輯者」或「擁有者」");
       throw error;
     }
   }
