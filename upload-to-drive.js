@@ -150,8 +150,9 @@ class GoogleDriveUploader {
         });
       }
 
-      // 讀取檔案內容
-      const fileContent = await fs.readFile(file.path);
+      // 使用 fs.createReadStream 創建檔案流
+      const fs_sync = require("fs");
+      const fileStream = fs_sync.createReadStream(file.path);
 
       // 上傳檔案
       const fileMetadata = {
@@ -161,7 +162,7 @@ class GoogleDriveUploader {
 
       const media = {
         mimeType: "text/csv",
-        body: fileContent
+        body: fileStream
       };
 
       const response = await this.drive.files.create({
