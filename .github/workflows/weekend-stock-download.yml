@@ -1,0 +1,39 @@
+name: 週末股票資料下載
+
+on:
+  schedule:
+    # 週六上午 10:15 執行 (UTC 時間，台灣時間為 18:15)
+    - cron: "15 10 * * 6"
+  workflow_dispatch:
+
+jobs:
+  download-weekend-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 檢出程式碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: 安裝依賴
+        run: npm ci
+
+      - name: 安裝 Playwright 瀏覽器
+        run: npx playwright install chromium
+
+      - name: 執行週末股票資料下載
+        run: node -e "require('./app.js').downloadStockDataWeekend()"
+
+      - name: 上傳檔案到 Google Drive
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: node upload-to-drive.js
+
+      - name: 清理下載檔案
+        run: rm -rf */

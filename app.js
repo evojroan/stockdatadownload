@@ -1,6 +1,5 @@
 const {chromium} = require("@playwright/test");
 const fs = require("fs/promises"); // 使用 promises 版本
-const cron = require("node-cron");
 
 // 自定義日期格式化函數
 function formatDate(date) {
@@ -10,23 +9,22 @@ function formatDate(date) {
   return `${year}年${month}月${day}日`;
 }
 
-// 設定日期
-let todayDate;
-
-const today = new Date();
-const dayOfWeek = today.getDay();
-
-if (dayOfWeek === 6) {
-  today.setDate(today.getDate() - 1);
-} else if (dayOfWeek == 0) {
-  today.setDate(today.getDate() - 2);
-}
-
-todayDate = formatDate(today);
-
 // 股票資料下載功能
 async function downloadStockDataWeekday() {
-  const browser = await chromium.launch({headless: false});
+  // 計算日期
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+
+  let targetDate = new Date(today);
+  if (dayOfWeek === 6) {
+    targetDate.setDate(today.getDate() - 1);
+  } else if (dayOfWeek === 0) {
+    targetDate.setDate(today.getDate() - 2);
+  }
+
+  const todayDate = formatDate(targetDate);
+
+  const browser = await chromium.launch({headless: true});
   const page = await browser.newPage();
   console.log("開始執行股票資料下載...");
 
@@ -100,9 +98,9 @@ async function downloadStockDataWeekday() {
 }
 
 // Cron 排程 - 可以註解掉以停用自動執行
-cron.schedule("30 16 * * 1-5", async () => {
-  await downloadStockDataWeekday();
-});
+// cron.schedule("30 16 * * 1-5", async () => {
+//   await downloadStockDataWeekday();
+// });
 
 // 手動執行下載 (取消註解即可手動執行)
 //downloadStockDataWeekday();
@@ -110,28 +108,51 @@ cron.schedule("30 16 * * 1-5", async () => {
 //每週六自動下載大戶資料
 //
 async function downloadStockDataWeekend() {
-  const browser = await chromium.launch({headless: false});
-  const page = await browser.newPage();
-  console.log("Cron 開始執行股票資料下載...");
+  // 計算日期
+  const today = new Date();
+  const dayOfWeek = today.getDay();
 
-  //週六日下載集保戶股權分散表
-  if (dayOfWeek === 6 || dayOfWeek === 0) {
-    await page.goto("https://data.gov.tw/dataset/11452");
-    await page.waitForTimeout(2000);
-    let downloadPromise = page.waitForEvent("download");
-    await page.click(
-      'button.el-button.el-button--primary.is-plain span:has-text("CSV")'
-    );
-    let download = await downloadPromise;
-    await download.saveAs(`${todayDate}/${todayDate}當週大股東持股.csv`);
+  let targetDate = new Date(today);
+  if (dayOfWeek === 6) {
+    targetDate.setDate(today.getDate() - 1);
+  } else if (dayOfWeek === 0) {
+    targetDate.setDate(today.getDate() - 2);
   }
 
-  await browser.close();
-  console.log("集保戶股權分散表下載完成！");
+  const todayDate = formatDate(targetDate);
+
+  const browser = await chromium.launch({headless: true});
+  const page = await browser.newPage();
+  console.log("開始執行週末股票資料下載...");
+
+  try {
+    //週六日下載集保戶股權分散表
+    if (dayOfWeek === 6 || dayOfWeek === 0) {
+      await page.goto("https://data.gov.tw/dataset/11452");
+      await page.waitForTimeout(2000);
+      let downloadPromise = page.waitForEvent("download");
+      await page.click(
+        'button.el-button.el-button--primary.is-plain span:has-text("CSV")'
+      );
+      let download = await downloadPromise;
+      await fs.mkdir(todayDate, {recursive: true});
+      await download.saveAs(`${todayDate}/${todayDate}當週大股東持股.csv`);
+    }
+    console.log("集保戶股權分散表下載完成！");
+  } catch (error) {
+    console.error("下載過程中發生錯誤:", error);
+  } finally {
+    await browser.close();
+  }
 }
 
-cron.schedule("15 10 * * 6", async () => {
-  downloadStockDataWeekend();
-});
+// cron.schedule("15 10 * * 6", async () => {
+//   downloadStockDataWeekend();
+// });
 
 //downloadStockDataWeekend();
+
+module.exports = {
+  downloadStockDataWeekday,
+  downloadStockDataWeekend
+};
