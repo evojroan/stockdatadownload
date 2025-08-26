@@ -29,42 +29,34 @@ class GoogleDriveUploader {
         process.env.GOOGLE_REFRESH_TOKEN ? "已設定" : "未設定"
       );
       console.log(
-        "- GOOGLE_CREDENTIALS:",
-        process.env.GOOGLE_CREDENTIALS ? "已設定" : "未設定"
+        "- GOOGLE_DRIVE_FOLDER_ID:",
+        process.env.GOOGLE_DRIVE_FOLDER_ID ? "已設定" : "未設定"
       );
 
-      // 檢查是否使用 OAuth 認證
+      // 檢查 OAuth 認證必要環境變數
       if (
-        process.env.GOOGLE_CLIENT_ID &&
-        process.env.GOOGLE_CLIENT_SECRET &&
-        process.env.GOOGLE_REFRESH_TOKEN
+        !process.env.GOOGLE_CLIENT_ID ||
+        !process.env.GOOGLE_CLIENT_SECRET ||
+        !process.env.GOOGLE_REFRESH_TOKEN
       ) {
-        console.log("✓ 使用 OAuth 2.0 用戶認證");
-
-        const oauth2Client = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          "urn:ietf:wg:oauth:2.0:oob"
+        throw new Error(
+          "缺少必要的 OAuth 環境變數。請確認已設定 GOOGLE_CLIENT_ID、GOOGLE_CLIENT_SECRET 和 GOOGLE_REFRESH_TOKEN"
         );
-
-        oauth2Client.setCredentials({
-          refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-        });
-
-        this.drive = google.drive({version: "v3", auth: oauth2Client});
-      } else {
-        console.log("⚠️  使用服務帳戶認證");
-
-        // 從環境變數讀取服務帳戶金鑰
-        const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}");
-
-        const auth = new google.auth.GoogleAuth({
-          credentials,
-          scopes: ["https://www.googleapis.com/auth/drive"]
-        });
-
-        this.drive = google.drive({version: "v3", auth});
       }
+
+      console.log("✓ 使用 OAuth 2.0 用戶認證");
+
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        "urn:ietf:wg:oauth:2.0:oob"
+      );
+
+      oauth2Client.setCredentials({
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+      });
+
+      this.drive = google.drive({version: "v3", auth: oauth2Client});
 
       console.log("Google Drive API 初始化成功");
 
@@ -101,7 +93,7 @@ class GoogleDriveUploader {
       }
 
       if (!response.data.capabilities?.canAddChildren) {
-        throw new Error("服務帳戶沒有在此資料夾創建子資料夾的權限");
+        throw new Error("OAuth 認證的帳號沒有在此資料夾創建子資料夾的權限");
       }
 
       console.log("✓ 父資料夾權限驗證通過");
@@ -109,8 +101,8 @@ class GoogleDriveUploader {
       console.error("父資料夾權限驗證失敗:", error);
       console.log("請確認:");
       console.log("1. GOOGLE_DRIVE_FOLDER_ID 設定正確");
-      console.log("2. 如果是個人雲端硬碟：將資料夾移動到共用雲端硬碟");
-      console.log("3. 服務帳戶已被加入共用雲端硬碟並設為「內容管理員」權限");
+      console.log("2. OAuth 認證的 Google 帳號有存取此資料夾的權限");
+      console.log("3. 資料夾 ID 對應的是你有權限存取的 Google Drive 資料夾");
       throw error;
     }
   }
