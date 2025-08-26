@@ -1,0 +1,54 @@
+name: Upload Stock Data to Google Drive
+
+on:
+  schedule:
+    # 每天台北時間 16:00 執行 (UTC+8，所以是 UTC 08:00)
+    - cron: "0 8 * * *"
+  workflow_dispatch: # 允許手動觸發
+
+jobs:
+  download-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Download stock data
+        run: node app.js
+
+      - name: Upload to Google Drive (OAuth)
+        run: node upload-to-drive.js
+        env:
+          # OAuth 認證 (推薦用於個人 Google Drive)
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+
+          # Google Drive 目標資料夾 ID
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+
+          # 如果需要使用服務帳戶（僅適用於共用雲端硬碟）
+          # GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Archive downloaded files (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-data-files
+          path: |
+            **/*.csv
+            !node_modules/**
+          retention-days: 7

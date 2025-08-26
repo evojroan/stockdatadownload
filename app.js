@@ -33,11 +33,15 @@ async function downloadStockDataWeekday() {
     await page.goto(
       "https://www.twse.com.tw/zh/trading/historical/mi-index.html"
     );
+    await page.waitForLoadState("networkidle");
     await page.selectOption("#label1", "ALLBUT0999");
     await page.click("button.search");
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
-    let downloadPromise = page.waitForEvent("download");
+    // 等待搜尋結果載入
+    await page.waitForSelector("button.csv", {timeout: 10000});
+
+    let downloadPromise = page.waitForEvent("download", {timeout: 60000});
     await page.click("button.csv");
 
     let download = await downloadPromise;
@@ -48,9 +52,15 @@ async function downloadStockDataWeekday() {
     await page.goto(
       "https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote.php?l=zh-tw"
     );
-    await page.waitForTimeout(2500);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(3000);
 
-    downloadPromise = page.waitForEvent("download");
+    // 等待下載按鈕出現
+    await page.waitForSelector('button.response[data-format="csv"]', {
+      timeout: 10000
+    });
+
+    downloadPromise = page.waitForEvent("download", {timeout: 60000});
     await page.click('button.response[data-format="csv"]');
 
     try {
@@ -62,11 +72,15 @@ async function downloadStockDataWeekday() {
 
     //每日上市買賣超
     await page.goto("https://www.twse.com.tw/zh/trading/foreign/t86.html");
+    await page.waitForLoadState("networkidle");
     await page.selectOption("#label1", "ALLBUT0999");
     await page.click("button.search");
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
-    downloadPromise = page.waitForEvent("download");
+    // 等待搜尋結果載入
+    await page.waitForSelector("button.csv", {timeout: 10000});
+
+    downloadPromise = page.waitForEvent("download", {timeout: 60000});
     await page.click("button.csv");
     download = await downloadPromise;
     await fs.mkdir(todayDate, {recursive: true});
@@ -76,10 +90,17 @@ async function downloadStockDataWeekday() {
     await page.goto(
       "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge.php?l=zh-tw"
     );
-    await page.waitForTimeout(2500);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(3000);
     await page.selectOption("#___auto1", "EW");
     await page.waitForTimeout(2000);
-    downloadPromise = page.waitForEvent("download");
+
+    // 等待下載按鈕出現
+    await page.waitForSelector('button.response[data-format="csv"]', {
+      timeout: 10000
+    });
+
+    downloadPromise = page.waitForEvent("download", {timeout: 60000});
     await page.click('button.response[data-format="csv"]');
 
     try {
@@ -129,8 +150,16 @@ async function downloadStockDataWeekend() {
     //週六日下載集保戶股權分散表
     if (dayOfWeek === 6 || dayOfWeek === 0) {
       await page.goto("https://data.gov.tw/dataset/11452");
-      await page.waitForTimeout(2000);
-      let downloadPromise = page.waitForEvent("download");
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(3000);
+
+      // 等待下載按鈕出現
+      await page.waitForSelector(
+        'button.el-button.el-button--primary.is-plain span:has-text("CSV")',
+        {timeout: 10000}
+      );
+
+      let downloadPromise = page.waitForEvent("download", {timeout: 60000});
       await page.click(
         'button.el-button.el-button--primary.is-plain span:has-text("CSV")'
       );

@@ -7,20 +7,65 @@ class GoogleDriveUploader {
   constructor() {
     this.drive = null;
     this.folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "";
+    this.isSharedDrive = false;
+    this.driveId = null;
   }
 
   // 初始化 Google Drive API
   async initialize() {
     try {
-      // 從環境變數讀取服務帳戶金鑰
-      const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}");
+      // 除錯：顯示環境變數狀態
+      console.log("環境變數檢查:");
+      console.log(
+        "- GOOGLE_CLIENT_ID:",
+        process.env.GOOGLE_CLIENT_ID ? "已設定" : "未設定"
+      );
+      console.log(
+        "- GOOGLE_CLIENT_SECRET:",
+        process.env.GOOGLE_CLIENT_SECRET ? "已設定" : "未設定"
+      );
+      console.log(
+        "- GOOGLE_REFRESH_TOKEN:",
+        process.env.GOOGLE_REFRESH_TOKEN ? "已設定" : "未設定"
+      );
+      console.log(
+        "- GOOGLE_CREDENTIALS:",
+        process.env.GOOGLE_CREDENTIALS ? "已設定" : "未設定"
+      );
 
-      const auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ["https://www.googleapis.com/auth/drive"]
-      });
+      // 檢查是否使用 OAuth 認證
+      if (
+        process.env.GOOGLE_CLIENT_ID &&
+        process.env.GOOGLE_CLIENT_SECRET &&
+        process.env.GOOGLE_REFRESH_TOKEN
+      ) {
+        console.log("✓ 使用 OAuth 2.0 用戶認證");
 
-      this.drive = google.drive({version: "v3", auth});
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          "urn:ietf:wg:oauth:2.0:oob"
+        );
+
+        oauth2Client.setCredentials({
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+        });
+
+        this.drive = google.drive({version: "v3", auth: oauth2Client});
+      } else {
+        console.log("⚠️  使用服務帳戶認證");
+
+        // 從環境變數讀取服務帳戶金鑰
+        const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}");
+
+        const auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ["https://www.googleapis.com/auth/drive"]
+        });
+
+        this.drive = google.drive({version: "v3", auth});
+      }
+
       console.log("Google Drive API 初始化成功");
 
       // 驗證父資料夾權限
@@ -38,11 +83,22 @@ class GoogleDriveUploader {
 
       const response = await this.drive.files.get({
         fileId: this.folderId,
-        fields: "id, name, permissions, capabilities"
+        fields: "id, name, permissions, capabilities, driveId",
+        supportsAllDrives: true
       });
 
       console.log(`父資料夾名稱: ${response.data.name}`);
       console.log(`父資料夾權限:`, response.data.capabilities);
+
+      // 檢查是否為共用雲端硬碟
+      if (response.data.driveId) {
+        console.log(`✓ 檢測到共用雲端硬碟 (ID: ${response.data.driveId})`);
+        this.isSharedDrive = true;
+        this.driveId = response.data.driveId;
+      } else {
+        console.log("⚠️  這是個人雲端硬碟資料夾");
+        this.isSharedDrive = false;
+      }
 
       if (!response.data.capabilities?.canAddChildren) {
         throw new Error("服務帳戶沒有在此資料夾創建子資料夾的權限");
@@ -53,8 +109,8 @@ class GoogleDriveUploader {
       console.error("父資料夾權限驗證失敗:", error);
       console.log("請確認:");
       console.log("1. GOOGLE_DRIVE_FOLDER_ID 設定正確");
-      console.log("2. 服務帳戶已被加入資料夾共用清單");
-      console.log("3. 服務帳戶權限設為「編輯者」或「擁有者」");
+      console.log("2. 如果是個人雲端硬碟：將資料夾移動到共用雲端硬碟");
+      console.log("3. 服務帳戶已被加入共用雲端硬碟並設為「內容管理員」權限");
       throw error;
     }
   }
@@ -101,10 +157,14 @@ class GoogleDriveUploader {
   async getOrCreateDateFolder(folderName) {
     try {
       // 搜尋是否已存在該日期資料夾
-      const response = await this.drive.files.list({
+      const listOptions = {
         q: `name='${folderName}' and parents in '${this.folderId}' and mimeType='application/vnd.google-apps.folder'`,
-        fields: "files(id, name)"
-      });
+        fields: "files(id, name)",
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      };
+
+      const response = await this.drive.files.list(listOptions);
 
       if (response.data.files.length > 0) {
         console.log(`找到現有資料夾: ${folderName}`);
@@ -118,10 +178,13 @@ class GoogleDriveUploader {
         mimeType: "application/vnd.google-apps.folder"
       };
 
-      const folder = await this.drive.files.create({
+      const createOptions = {
         resource: folderMetadata,
-        fields: "id"
-      });
+        fields: "id",
+        supportsAllDrives: true
+      };
+
+      const folder = await this.drive.files.create(createOptions);
 
       console.log(`建立新資料夾: ${folderName} (ID: ${folder.data.id})`);
       return folder.data.id;
@@ -139,14 +202,17 @@ class GoogleDriveUploader {
       // 檢查檔案是否已存在
       const existingFiles = await this.drive.files.list({
         q: `name='${file.name}' and parents in '${parentFolderId}'`,
-        fields: "files(id, name)"
+        fields: "files(id, name)",
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
       });
 
       // 如果檔案已存在，先刪除舊檔案
       if (existingFiles.data.files.length > 0) {
         console.log(`檔案 ${file.name} 已存在，將覆蓋舊檔案`);
         await this.drive.files.delete({
-          fileId: existingFiles.data.files[0].id
+          fileId: existingFiles.data.files[0].id,
+          supportsAllDrives: true
         });
       }
 
@@ -165,11 +231,14 @@ class GoogleDriveUploader {
         body: fileStream
       };
 
-      const response = await this.drive.files.create({
+      const uploadOptions = {
         resource: fileMetadata,
         media: media,
-        fields: "id, name"
-      });
+        fields: "id, name",
+        supportsAllDrives: true
+      };
+
+      const response = await this.drive.files.create(uploadOptions);
 
       console.log(`✓ 上傳成功: ${file.name} (ID: ${response.data.id})`);
       return response.data;
