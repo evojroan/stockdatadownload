@@ -100,3 +100,83 @@ Lines added: 3, lines removed: 1
 
 ---
 
+_**User**_
+
+台灣時間 11:00
+
+---
+
+_**Assistant**_
+
+我看到您想要將 GitHub Actions 的執行時間設定為台灣時間 11:00。
+
+**時區換算：**
+- 台灣時間 11:00 = UTC 時間 03:00（台灣時間比 UTC 快 8 小時）
+- Cron 格式：`"00 03 * * 1-5"`（分鐘 小時 日 月 星期）
+
+我注意到您已經修改了 `weekday-stock-download.yml` 的時間為 `"00 15 * * 1-5"`，這相當於台灣時間 23:00。如果您要改為台灣時間 11:00，需要修正為 `"00 03 * * 1-5"`。
+
+讓我幫您修正兩個工作流程檔案的執行時間：
+
+---
+
+<details><summary>Edit file: .github/workflows/weekday-stock-download.yml</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 2, lines removed: 2
+
+```diff
+@@ -3,6 +3,6 @@
+  on:
+    schedule:
+-     # 週一到週五下午 4:30 執行 (UTC 時間，台灣時間為 00:30)
+-     - cron: "00 15 * * 1-5"
++     # 週一到週五上午 11:00 執行 (UTC 時間 03:00，台灣時間為 11:00)
++     - cron: "00 03 * * 1-5"
+    workflow_dispatch:
+  
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: .github/workflows/weekend-stock-download.yml</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 2, lines removed: 2
+
+```diff
+@@ -3,6 +3,6 @@
+  on:
+    schedule:
+-     # 週六上午 10:15 執行 (UTC 時間，台灣時間為 18:15)
+-     - cron: "15 10 * * 6"
++     # 週六上午 11:00 執行 (UTC 時間 03:00，台灣時間為 11:00)
++     - cron: "00 03 * * 6"
+    workflow_dispatch:
+  
+```
+
+</details>
+
+---
+
+**已完成時間設定！**
+
+**修改內容：**
+1. **工作日股票下載**：每週一到週五台灣時間 11:00 執行
+2. **週末股票下載**：每週六台灣時間 11:00 執行
+
+**Cron 時間說明：**
+- `"00 03 * * 1-5"` = UTC 03:00 = 台灣時間 11:00（週一到週五）
+- `"00 03 * * 6"` = UTC 03:00 = 台灣時間 11:00（週六）
+
+現在兩個 GitHub Actions 工作流程都會在台灣時間上午 11:00 執行股票資料下載和上傳作業。
+
+---
+
